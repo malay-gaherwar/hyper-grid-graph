@@ -305,7 +305,7 @@ GridGraph<D, VISITOR>::assign(
             {
                 //
                 size_type cumprod = edgeShape[0];
-                for(size_type j = 1; j < DIMENSION; ++j) {
+                for(size_type j = 1; j < DIMENSION; ++j) {  
                     cumprod *= edgeShape[j];
                 }
                 edgeIndexOffsets_[i] = (edgeIndexOffset += cumprod);

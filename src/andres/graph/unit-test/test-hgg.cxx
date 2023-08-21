@@ -1,10 +1,23 @@
 #include <iostream>
 #include <vector>
 #include <array>
+#include <memory>
+#include <algorithm>
+#include <vector>
+#include <iterator>
+#include <type_traits>
+
+#include "andres/graph/graph.hxx"
+#include "andres/graph/hyper-grid-graph.hxx"
+
 
 // Define the OffsetVector type alias with a template parameter
 template <unsigned char D>
 using OffsetVector = std::vector<std::array<size_t, D>>;
+
+//the HyperGridGraph type alias
+template <unsigned char D>
+using HyperGridGraph = andres::graph::HyperGridGraph<D>;
 
 // Function to input and store the offset for a D-dimensional grid graph
 template <unsigned char D>
@@ -31,13 +44,9 @@ OffsetVector<D> inputOffset() {
     return offset;
 }
 
-int main() {
-    const unsigned char D = 2; // Specify the dimensionality of the grid graph
-
-    // Input the offset values based on the dimension D
-    OffsetVector<D> offset = inputOffset<D>();
-
-    // Print the stored offset values
+// Function to print the offset values
+template <unsigned char D>
+void printOffset(const OffsetVector<D>& offset) {
     std::cout << "Offset values for the D-dimensional grid graph:" << std::endl;
     for (size_t i = 0; i < D; ++i) {
         for (const auto& value : offset[i]) {
@@ -45,6 +54,41 @@ int main() {
         }
         std::cout << std::endl;
     }
+}
+
+template <unsigned char D>
+void test_empty_constructor() {
+    // Create an empty hyper grid graph
+    andres::graph::HyperGridGraph<D> hgg;
+
+    // Check that the number of vertices is 0
+    assert(hgg.numberOfVertices() == 0);
+
+    std::cout << "Empty constructor test passed!" << std::endl;
+}
+
+
+
+int main()
+{
+   
+    const unsigned char D = 2; // Specify the dimensionality of the grid graph
+
+    // Input the offset values based on the dimension D
+    OffsetVector<D> offset = inputOffset<D>();
+
+    // Print the stored offset values
+    printOffset(offset);
+
+    // Perform other tests
+    test_empty_constructor<D>();
+    //test_empty_offsets();
+    //test_vertex_of_edge();
+    //test_find_edge();
+    //test_iterate_vertices();
+    //test_iterate_edges();
+    //test_iterate_adjacent_vertices_of_vertex();
+    // ...
 
     return 0;
 }
