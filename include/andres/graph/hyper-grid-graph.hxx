@@ -52,12 +52,17 @@ public:
     HyperGridGraph(const VertexCoordinate&, const OffsetVector&, const Visitor & = Visitor());
     HyperGridGraph(const std::initializer_list<std::size_t>, const Visitor & = Visitor());//not implemented yet
     void assign(const Visitor & = Visitor());
-    void assign(const VertexCoordinate&, const Visitor & = Visitor());
+    void assign(const VertexCoordinate&, const OffsetVector&, const Visitor & = Visitor());
+   
 
 
-
-    size_type numberOfEdgesFromVertex(const size_type) const;
-
+    size_type vertex(const VertexCoordinate&) const;
+    void vertex(size_type, VertexCoordinate&) const;
+    
+    
+    //size_type numberOfEdgesFromVertex(const size_type) const;
+    size_type numberOfVertices() const;
+    size_type numberOfEdges() const;
 
 
 
@@ -67,7 +72,7 @@ private:
     VertexCoordinate shape_;
     std::array<size_type, DIMENSION> edgeIndexOffsets_;
     std::array<size_type, DIMENSION> vertexIndexOffsets_;
-    std::array<VertexCoordinate, DIMENSION> edgeShapes_;
+    std::array<VertexCoordinate, DIMENSION> edgeShapes_; //in a HGG the value of 0 in a edgeShapes_ denotes that the edge is not possible for any rows
     size_type numberOfVertices_;
     Visitor visitor_;
 
@@ -135,8 +140,8 @@ inline void
 /// \param 
 /// \param visitor Visitor to follow changes of integer indices of vertices
 /// and edges.
- /*
-template<unsigned char D, class VISITOR> // doesnt work
+ 
+template<unsigned char D, class VISITOR> 
 inline void
 HyperGridGraph<D, VISITOR>::assign(
     const VertexCoordinate& shape,
@@ -149,7 +154,7 @@ HyperGridGraph<D, VISITOR>::assign(
 
     // Set vertex offsets for fast vertex indexing.
     size_type cumprod = 1;
-    for (size_type i = 0; i < D; ++i) {
+    for (size_type i = 0; i < DIMENSION; ++i) {
         vertexIndexOffsets_[i] = cumprod;
         cumprod *= shape_[i];
     }
@@ -157,37 +162,35 @@ HyperGridGraph<D, VISITOR>::assign(
 
     // Set edge offsets.
     size_type edgeIndexOffset = 0;
-    for (size_type i = 0; i < D; ++i) {
-        std::array<int, D>& edgeShape = edgeShapes_[i]; // Get the current edge shape array
-        edgeShape = offsets_[i]; // Use the provided offsets for edge shapes
-
-        // Adjust edge shapes by reducing each value by 1 if it's greater than 0
-        for (size_type j = 0; j < D; ++j) {
-            if (edgeShape[j] > 0) {
-                --edgeShape[j];
-            }
+    for (size_type i = 0; i < offsets_.size(); ++i) {
+        VertexCoordinate& edgeShape = edgeShapes_[i]; // Get the current edge shape array
+        edgeShape = shape_; 
+        
+        VertexCoordinate offs = offsets_[i];
+        for (size_type j = 0; j < DIMENSION; ++j) {
+            edgeShape[j] -= abs(offs[j]);
+                   
         }
-
-        // Calculate the cumulative product of edgeShape values
+        // calculating cumulative product
         size_type cumprod = edgeShape[0];
-        for (size_type j = 1; j < D; ++j) {
-            cumprod *= edgeShape[j];
+        for (size_type k = 1; k < DIMENSION; ++k) {
+            cumprod *= edgeShape[k];
         }
-
-        // Store the cumulative edge index offset and update edgeIndexOffset
         edgeIndexOffsets_[i] = (edgeIndexOffset += cumprod);
+    }
+        }
     }
 }
 
- */       
-
+        
+/*
 
 //Calculation number of edges from vertex //completed
 template<unsigned char D, class VISITOR> 
 inline typename HyperGridGraph<D, VISITOR>::size_type
 HyperGridGraph<D, VISITOR>::numberOfEdgesFromVertex(
     const size_type vertex
-) const {
+)   const {
 assert(vertex < numberOfVertices());
 VertexCoordinate edgeCoordinate;
 this->vertex(vertex, edgeCoordinate);
@@ -227,6 +230,9 @@ for (const auto& offset : offsets) {
 
     return numEdgesFromVertex;
 }
+
+*/
+
 /// Give Vertex Coordinate and retrieve the vertex index. //completed
 /// \param[in] vertexIndex the integer index of the requested vertex
 /// \param[out] vertexCoordinate The coordinates of the vertex.
@@ -234,7 +240,7 @@ for (const auto& offset : offsets) {
 /// its inputs.
 template<unsigned char D, class VISITOR> 
 void
-GridGraph<D, VISITOR>::vertex(
+HyperGridGraph<D, VISITOR>::vertex(
     size_type vertexIndex,
     VertexCoordinate & vertexCoordinate
 ) const {
@@ -253,8 +259,8 @@ GridGraph<D, VISITOR>::vertex(
 /// \warning For the sake of performance this function does not validate
 /// its inputs.
 template<unsigned char D, class VISITOR>
-typename GridGraph<D, VISITOR>::size_type
-GridGraph<D, VISITOR>::vertex(
+typename HyperGridGraph<D, VISITOR>::size_type
+HyperGridGraph<D, VISITOR>::vertex(
     const VertexCoordinate& vertexCoordinate
 ) const {
     size_type index = vertexCoordinate[DIMENSION - 1];
@@ -267,16 +273,32 @@ GridGraph<D, VISITOR>::vertex(
 /// Get the number of vertices.
 
 template<unsigned char D, class VISITOR>
-inline typename GridGraph<D, VISITOR>::size_type
-GridGraph<D, VISITOR>::numberOfVertices() const {
+inline typename HyperGridGraph<D, VISITOR>::size_type
+HyperGridGraph<D, VISITOR>::numberOfVertices() const {
 return numberOfVertices_;
+}
 
-    
+/// Get the number of edges.
+///
+template<unsigned char D, class VISITOR>
+inline typename HyperGridGraph<D, VISITOR>::size_type
+HyperGridGraph<D, VISITOR>::numberOfEdges() const {
+    return edgeIndexOffsets_[DIMENSION - 1];
+}
 
- }
+/// Get the size of a specific dimension of the grid graph.
+/// \param dimension the index of the dimension index to retrieve.
+/// \return the size of the specified dimension.
+/// \see mapIndexToCoordinate mapVertexCoordinateToIndex
+template<unsigned char D, class VISITOR>
+inline typename HyperGridGraph<D, VISITOR>::size_type
+HyperGridGraph<D, VISITOR>::shape(
+    const size_type dimension
+) const {
+    return shape_[dimension];
+}
 
 } // namespace graph
 } // namespace andres
 
 #endif // #ifndef ANDRES_HYPER_GRID_GRAPH_HXX
-
