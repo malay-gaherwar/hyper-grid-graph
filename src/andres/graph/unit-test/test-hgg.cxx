@@ -67,7 +67,40 @@ void test_empty_constructor() {
     std::cout << "Empty constructor test passed!" << std::endl;
 }
 
+void testMalay()
 
+{
+
+    andres::graph::HyperGridGraph<2>
+        graph({ 2, 4 });
+
+    andres::graph::HyperGridGraph<2>::EdgeCoordinate
+        edge_coordinate;
+    andres::graph::HyperGridGraph<2>::OffsetVector
+        vector{{ 1, 0}, { 0,1 }};
+
+    for (size_t idx = 0;
+        idx < graph.numberOfEdges();
+        ++idx)
+
+    {
+
+        graph.edge(idx, edge_coordinate);
+
+        std::cout << "idx = " <<
+            idx << ", pivot = (" <<
+
+            edge_coordinate.pivotCoordinate_[0] <<
+            ", " <<
+
+            edge_coordinate.pivotCoordinate_[1] <<
+            "), dimension = " <<
+
+            edge_coordinate.offsetIndex_ << "\n";
+
+    }
+
+}
 
 int main()
 {

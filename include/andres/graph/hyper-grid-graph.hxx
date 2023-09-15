@@ -5,6 +5,7 @@
 #include <cassert>
 #include <cstddef>
 #include <cmath>
+#include <cstdlib>
 #include <iterator>
 #include <array>
 #include <initializer_list>
@@ -45,31 +46,38 @@ public:
         /// of false is implied.)
         VertexCoordinate pivotCoordinate_;
         /// The index of the offset along which the edge is drawn.
-        size_type offset_index_;
+        size_type offsetIndex_;
     };
 
+
+    //Defining the constructors of class HyperGridGraph
     HyperGridGraph(const Visitor & = Visitor());
     HyperGridGraph(const VertexCoordinate&, const OffsetVector&, const Visitor & = Visitor());
     HyperGridGraph(const std::initializer_list<std::size_t>, const Visitor & = Visitor());//not implemented yet
     void assign(const Visitor & = Visitor());
     void assign(const VertexCoordinate&, const OffsetVector&, const Visitor & = Visitor());
-   
 
+
+    size_type numberOfVertices() const;
+    size_type numberOfEdges() const;
+    size_type numberOfEdgesFromVertex(const size_type) const;
+   
+    size_type shape(const size_type) const;
 
     size_type vertex(const VertexCoordinate&) const;
     void vertex(size_type, VertexCoordinate&) const;
+    size_type edge(const EdgeCoordinate&) const;
+    void edge(size_type, EdgeCoordinate&) const;
     
     
-    //size_type numberOfEdgesFromVertex(const size_type) const;
-    size_type numberOfVertices() const;
-    size_type numberOfEdges() const;
-
+    
 
 
 
 private:
     // Member variables
     VertexCoordinate shape_;
+    OffsetVector offsets_;
     std::array<size_type, DIMENSION> edgeIndexOffsets_;
     std::array<size_type, DIMENSION> vertexIndexOffsets_;
     std::array<VertexCoordinate, DIMENSION> edgeShapes_; //in a HGG the value of 0 in a edgeShapes_ denotes that the edge is not possible for any rows
@@ -93,7 +101,7 @@ inline
     HyperGridGraph<D, VISITOR>::HyperGridGraph(
         const Visitor& visitor
     )
-    : HyperGridGraph(VertexCoordinate({}), visitor) // Chain-call Constructor
+    : HyperGridGraph(VertexCoordinate({}), OffsetVector({}), visitor) // Chain-call Constructor
 {}
 
 
@@ -177,14 +185,11 @@ HyperGridGraph<D, VISITOR>::assign(
             cumprod *= edgeShape[k];
         }
         edgeIndexOffsets_[i] = (edgeIndexOffset += cumprod);
-    }
-        }
-    }
+    }       
+    
 }
 
-        
 /*
-
 //Calculation number of edges from vertex //completed
 template<unsigned char D, class VISITOR> 
 inline typename HyperGridGraph<D, VISITOR>::size_type
@@ -274,7 +279,8 @@ HyperGridGraph<D, VISITOR>::vertex(
 
 template<unsigned char D, class VISITOR>
 inline typename HyperGridGraph<D, VISITOR>::size_type
-HyperGridGraph<D, VISITOR>::numberOfVertices() const {
+HyperGridGraph<D, VISITOR>::numberOfVertices(
+) const {
 return numberOfVertices_;
 }
 
@@ -296,6 +302,76 @@ HyperGridGraph<D, VISITOR>::shape(
     const size_type dimension
 ) const {
     return shape_[dimension];
+}
+
+/// Retrieve the specified edge of the graph. Given edge coordinate, return index
+/// \param edgeCoordinate the coordinates of the minimum endpoint (\e pivot)
+/// and the direction of the requested edge.
+/// \return The integer index of the specified edge.
+/// \warning For the sake of performance this function does not validate
+/// its inputs.
+/// \sa hasEdge()
+template<unsigned char D, class VISITOR>
+inline typename HyperGridGraph<D, VISITOR>::size_type
+HyperGridGraph<D, VISITOR>::edge(
+    const EdgeCoordinate& edgeCoordinate
+) const {
+    assert(edgeCoordinate.size() < DIMENSION);
+
+    const size_type& offsetIndex_ = edgeCoordinate.offsetIndex_;
+    const VertexCoordinate& pivotCoordinate = edgeCoordinate.pivotCoordinate_;
+    const VertexCoordinate& edgeShape = edgeShapes_[offsetIndex];
+
+    size_type index = pivotCoordinate[DIMENSION - 1];
+    for (size_type i = DIMENSION - 1; i > 0; --i) {
+        index = index * edgeShape[i - 1] + pivotCoordinate[i - 1];
+    }
+    if (dimension > 0) {
+        const size_type& indexOffset = edgeIndexOffsets_[dimension - 1];
+        index += indexOffset;
+    }
+    return index;
+}
+
+
+
+/// Retrieve the specified edge of the graph. Given edge index, send back edgeCoordinate(Pivot coordinate and offset index).
+/// \param[in] edgeIndex the integer index of the requested edge.
+/// \param[out] edgeCoordinate a GridGraph::EdgeCoordinate instance. \c
+/// edgeCoordinate.pivot is the integer index
+///  of the minimum of the two edge endpoints; \p edgeCoordinate.direction
+///  is the dimension along which
+///  the edge is drawn, with an assumed positive isSmaller.
+/// \warning For the sake of performance this function does not validate
+/// its inputs.
+/// \sa HyperGridGraph::bool
+template<unsigned char D, class VISITOR>
+inline void
+HyperGridGraph<D, VISITOR>::edge(
+        size_type edgeIndex,
+        EdgeCoordinate & edgeCoordinate
+    ) const {
+    // WARNING: If the assertion does not hold, the code will scan until an unlikely condition.
+    assert(edgeIndex < numberOfEdges());
+
+    size_type& direction = edgeCoordinate.offsetIndex_;
+    // Find the direction as the last edge offset:
+    for (direction = 0; edgeIndex >= edgeIndexOffsets_[direction]; ++direction);
+    if (direction > 0) { // Not needed, but saves one memory lookup.
+        const size_type& offset = edgeIndexOffsets_[direction - 1];
+        edgeIndex -= offset;
+    }
+    const VertexCoordinate& edgeShape = edgeShapes_[direction];
+    // mapEdgeIndexToCoordinate
+    {
+        VertexCoordinate& pivotCoordinate = edgeCoordinate.pivotCoordinate_;
+        size_type i;
+        for (i = 0; i < DIMENSION - 1; ++i) {
+            pivotCoordinate[i] = edgeIndex % edgeShape[i];
+            edgeIndex = edgeIndex / edgeShape[i];
+        }
+        pivotCoordinate[i] = edgeIndex;
+    }
 }
 
 } // namespace graph
