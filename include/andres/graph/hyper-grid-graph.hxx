@@ -49,11 +49,65 @@ public:
         size_type offsetIndex_;
     };
 
+    /// AdjacencyIterator
+    // \cond SUPPRESS_DOXYGEN
+    class AdjacencyIterator
+        : public std::iterator <
+        std::random_access_iterator_tag,
+        const AdjacencyType
+        > {
+    public:
+        typedef HyperGridGraph<DIMENSION, Visitor> GraphType;
+        typedef std::iterator <
+            std::random_access_iterator_tag,
+            const AdjacencyType
+        > Base;
+        typedef typename Base::difference_type difference_type;
+        typedef typename Base::pointer pointer;
+        typedef typename Base::reference reference;
+
+        //constructors of AdjacencyIterator class
+        AdjacencyIterator();
+        AdjacencyIterator(const GraphType&);
+        AdjacencyIterator(const GraphType&, const size_type);
+        AdjacencyIterator(const GraphType&, const size_type, const size_type);
+
+        // increment and decrement
+        AdjacencyIterator& operator+=(const difference_type);
+        AdjacencyIterator& operator-=(const difference_type);
+        AdjacencyIterator& operator++(); // prefix
+        AdjacencyIterator& operator--(); // prefix
+        AdjacencyIterator operator++(int); // postfix
+        AdjacencyIterator operator--(int); // postfix
+        AdjacencyIterator operator+(const difference_type) const;
+        AdjacencyIterator operator-(const difference_type) const;
+        difference_type operator-(const AdjacencyIterator&) const;
+
+        // comparison
+        bool operator==(const AdjacencyIterator&) const;
+        bool operator!=(const AdjacencyIterator&) const;
+        bool operator<(const AdjacencyIterator&) const;
+        bool operator<=(const AdjacencyIterator&) const;
+        bool operator>(const AdjacencyIterator&) const;
+        bool operator>=(const AdjacencyIterator&) const;
+
+        // access
+        reference operator*();
+        pointer operator->();
+        reference operator[](const difference_type);
+
+    protected:
+        const GraphType* graph_;
+        size_type vertex_;
+        size_type adjacencyIndex_;
+        AdjacencyType adjacency_;
+    };
 
     //Defining the constructors of class HyperGridGraph
     HyperGridGraph(const Visitor & = Visitor());
     HyperGridGraph(const VertexCoordinate&, const OffsetVector&, const Visitor & = Visitor());
     HyperGridGraph(const std::initializer_list<std::size_t>, const Visitor & = Visitor());//not implemented yet
+
     void assign(const Visitor & = Visitor());
     void assign(const VertexCoordinate&, const OffsetVector&, const Visitor & = Visitor());
 
@@ -176,7 +230,7 @@ HyperGridGraph<D, VISITOR>::assign(
         
         VertexCoordinate offs = offsets_[i];
         for (size_type j = 0; j < DIMENSION; ++j) {
-            edgeShape[j] -= abs(offs[j]);
+            edgeShape[j] -=  ::abs(offs[j]);
                    
         }
         // calculating cumulative product
@@ -373,6 +427,192 @@ HyperGridGraph<D, VISITOR>::edge(
         pivotCoordinate[i] = edgeIndex;
     }
 }
+
+//Adjacency Iterator implementation
+
+template<unsigned char D, class VISITOR>
+inline
+HyperGridGraph<D, VISITOR>::AdjacencyIterator::AdjacencyIterator()
+    : vertex_(0),
+    adjacencyIndex_(0),
+    adjacency_()
+{}
+template<unsigned char D, class VISITOR>
+inline
+HyperGridGraph<D, VISITOR>::AdjacencyIterator::AdjacencyIterator(
+    const GraphType& graph
+)
+    : graph_(&graph),
+    vertex_(0),
+    adjacencyIndex_(0),
+    adjacency_()
+{}
+
+template<unsigned char D, class VISITOR>
+inline
+HyperGridGraph<D, VISITOR>::AdjacencyIterator::AdjacencyIterator(
+    const GraphType& graph,
+    const size_type vertex
+)
+    : graph_(&graph),
+    vertex_(vertex),
+    adjacencyIndex_(0),
+    adjacency_() {
+    assert(vertex < graph.numberOfVertices());
+}
+
+template<unsigned char D, class VISITOR>
+inline
+HyperGridGraph<D, VISITOR>::AdjacencyIterator::AdjacencyIterator(
+    const GraphType& graph,
+    const size_type vertex,
+    const size_type adjacencyIndex
+)
+    : graph_(&graph),
+    vertex_(vertex),
+    adjacencyIndex_(adjacencyIndex),
+    adjacency_() {
+    assert(vertex < graph.numberOfVertices());
+    assert(adjacencyIndex <= graph.numberOfVertices());
+}
+
+template<unsigned char D, class VISITOR>
+inline typename HyperGridGraph<D, VISITOR>::AdjacencyIterator&
+HyperGridGraph<D, VISITOR>::AdjacencyIterator::operator+=(
+    const difference_type d
+    ) {
+    adjacencyIndex_ += d;
+    return *this;
+}
+
+template<unsigned char D, class VISITOR>
+inline typename HyperGridGraph<D, VISITOR>::AdjacencyIterator&
+HyperGridGraph<D, VISITOR>::AdjacencyIterator::operator-=(
+    const difference_type d
+    ) {
+    adjacencyIndex_ -= d;
+    return *this;
+}
+
+template<unsigned char D, class VISITOR>
+inline typename HyperGridGraph<D, VISITOR>::AdjacencyIterator&
+HyperGridGraph<D, VISITOR>::AdjacencyIterator::operator++() {
+    ++adjacencyIndex_;
+    return *this;
+}
+
+template<unsigned char D, class VISITOR>
+inline typename HyperGridGraph<D, VISITOR>::AdjacencyIterator&
+HyperGridGraph<D, VISITOR>::AdjacencyIterator::operator--() {
+    --adjacencyIndex_;
+    return *this;
+}
+
+template<unsigned char D, class VISITOR>
+inline typename HyperGridGraph<D, VISITOR>::AdjacencyIterator
+HyperGridGraph<D, VISITOR>::AdjacencyIterator::operator++(int) {
+    AdjacencyIterator copy = *this;
+    ++adjacencyIndex_;
+    return copy;
+}
+
+template<unsigned char D, class VISITOR>
+inline typename HyperGridGraph<D, VISITOR>::AdjacencyIterator
+HyperGridGraph<D, VISITOR>::AdjacencyIterator::operator--(int) {
+    AdjacencyIterator copy = *this;
+    --adjacencyIndex_;
+    return copy;
+}
+
+template<unsigned char D, class VISITOR>
+inline typename HyperGridGraph<D, VISITOR>::AdjacencyIterator
+HyperGridGraph<D, VISITOR>::AdjacencyIterator::operator+(
+    const difference_type d
+    ) const {
+    AdjacencyIterator copy = *this;
+    copy += d;
+    return copy;
+}
+
+template<unsigned char D, class VISITOR>
+inline typename HyperGridGraph<D, VISITOR>::AdjacencyIterator
+HyperGridGraph<D, VISITOR>::AdjacencyIterator::operator-(
+    const difference_type d
+    ) const {
+    AdjacencyIterator copy = *this;
+    copy -= d;
+    return copy;
+}
+
+template<unsigned char D, class VISITOR>
+inline typename HyperGridGraph<D, VISITOR>::AdjacencyIterator::difference_type
+HyperGridGraph<D, VISITOR>::AdjacencyIterator::operator-(
+    const AdjacencyIterator& adjacencyIterator
+    ) const {
+    return adjacencyIndex_ - adjacencyIterator.adjacencyIndex_;
+}
+
+template<unsigned char D, class VISITOR>
+inline bool
+HyperGridGraph<D, VISITOR>::AdjacencyIterator::operator==(
+    const AdjacencyIterator& other
+    ) const {
+    return adjacencyIndex_ == other.adjacencyIndex_
+        && vertex_ == other.vertex_
+        && graph_ == other.graph_;
+}
+
+template<unsigned char D, class VISITOR>
+inline bool
+HyperGridGraph<D, VISITOR>::AdjacencyIterator::operator!=(
+    const AdjacencyIterator& other
+    ) const {
+    return adjacencyIndex_ != other.adjacencyIndex_
+        || vertex_ != other.vertex_
+        || graph_ != other.graph_;
+}
+
+template<unsigned char D, class VISITOR>
+inline bool
+HyperGridGraph<D, VISITOR>::AdjacencyIterator::operator<(
+    const AdjacencyIterator& other
+    ) const {
+    return adjacencyIndex_ < other.adjacencyIndex_
+        && vertex_ == other.vertex_
+        && graph_ == other.graph_;
+}
+
+template<unsigned char D, class VISITOR>
+inline bool
+HyperGridGraph<D, VISITOR>::AdjacencyIterator::operator<=(
+    const AdjacencyIterator& other
+    ) const {
+    return adjacencyIndex_ <= other.adjacencyIndex_
+        && vertex_ == other.vertex_
+        && graph_ == other.graph_;
+}
+
+template<unsigned char D, class VISITOR>
+inline bool
+HyperGridGraph<D, VISITOR>::AdjacencyIterator::operator>(
+    const AdjacencyIterator& other
+) const {
+    return adjacencyIndex_ > other.adjacencyIndex_
+        && vertex_ == other.vertex_
+        && graph_ == other.graph_;
+}
+
+template<unsigned char D, class VISITOR>
+inline bool
+HyperGridGraph<D, VISITOR>::AdjacencyIterator::operator>=(
+    const AdjacencyIterator& other
+    ) const {
+    return adjacencyIndex_ >= other.adjacencyIndex_
+        && vertex_ == other.vertex_
+        && graph_ == other.graph_;
+}
+
+
 
 } // namespace graph
 } // namespace andres
