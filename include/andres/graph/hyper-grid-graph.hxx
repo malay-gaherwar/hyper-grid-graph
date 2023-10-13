@@ -25,7 +25,7 @@ class HyperGridGraph {
 public:
     typedef std::size_t size_type;
     typedef VISITOR Visitor;
-    typedef std::vector<std::array<size_type, D>> OffsetVector;      //definition of OffsetVector
+    typedef std::vector<std::array<int, D>> OffsetVector;      //definition of OffsetVector
     typedef andres::graph::Adjacency<size_type> AdjacencyType;
 
     static const size_type DIMENSION = static_cast<size_type> (D);
@@ -91,10 +91,12 @@ public:
         bool operator>(const AdjacencyIterator&) const;
         bool operator>=(const AdjacencyIterator&) const;
 
+        /*
         // access
         reference operator*();
         pointer operator->();
         reference operator[](const difference_type);
+        */
 
     protected:
         const GraphType* graph_;
@@ -106,7 +108,7 @@ public:
     //Defining the constructors of class HyperGridGraph
     HyperGridGraph(const Visitor & = Visitor());
     HyperGridGraph(const VertexCoordinate&, const OffsetVector&, const Visitor & = Visitor());
-    HyperGridGraph(const std::initializer_list<std::size_t>, const Visitor & = Visitor());//not implemented yet
+   // HyperGridGraph(const std::initializer_list<std::size_t>, const Visitor & = Visitor());//not implemented yet
 
     void assign(const Visitor & = Visitor());
     void assign(const VertexCoordinate&, const OffsetVector&, const Visitor & = Visitor());
@@ -129,6 +131,11 @@ public:
 
 
 private:
+
+    //size_type vertexFromVertex(const VertexCoordinate&, const size_type, size_type&, bool&) const;
+    //void adjacencyFromVertex(const VertexCoordinate&, const size_type, size_type&, size_type&) const;
+    
+    
     // Member variables
     VertexCoordinate shape_;
     OffsetVector offsets_;
@@ -189,10 +196,10 @@ inline void
     HyperGridGraph<D, VISITOR>::assign(
         const Visitor& visitor
     ) {
-    OffsetVector offset
+    OffsetVector offset;
     VertexCoordinate shape;
     std::fill(shape.begin(), shape.end(), 0);
-    std::fill(offset.begin(), shape.end(), 0);
+    offset.clear();
     assign(shape,offset, visitor);
 }
 
@@ -228,9 +235,11 @@ HyperGridGraph<D, VISITOR>::assign(
         VertexCoordinate& edgeShape = edgeShapes_[i]; // Get the current edge shape array
         edgeShape = shape_; 
         
-        VertexCoordinate offs = offsets_[i];
+       
         for (size_type j = 0; j < DIMENSION; ++j) {
-            edgeShape[j] -=  ::abs(offs[j]);
+            int difference = edgeShape[j];
+            difference = difference - offsets_[i][j];
+            edgeShape[j] = abs(difference);
                    
         }
         // calculating cumulative product
@@ -292,7 +301,7 @@ for (const auto& offset : offsets) {
 
 */
 
-/// Give Vertex Coordinate and retrieve the vertex index. //completed
+/// Give Vertex index and retrieve the vertex coordinate. //completed
 /// \param[in] vertexIndex the integer index of the requested vertex
 /// \param[out] vertexCoordinate The coordinates of the vertex.
 /// \warning For the sake of performance this function does not validate
@@ -312,8 +321,8 @@ HyperGridGraph<D, VISITOR>::vertex(
     vertexCoordinate[i] = vertexIndex;
 }
 
-/// Give Vertex index and retrieve the vertex coordinate. //complted
-/// \param vertexCoordinate the integer index of the requested vertex
+/// Give Vertex Coordinate and retrieve the vertex index. //completed
+/// \param vertexCoordinate the coordinate of the requested vertex
 /// \return The integer index of the specified vertex.
 /// \warning For the sake of performance this function does not validate
 /// its inputs.
@@ -374,7 +383,7 @@ HyperGridGraph<D, VISITOR>::edge(
 
     const size_type& offsetIndex_ = edgeCoordinate.offsetIndex_;
     const VertexCoordinate& pivotCoordinate = edgeCoordinate.pivotCoordinate_;
-    const VertexCoordinate& edgeShape = edgeShapes_[offsetIndex];
+    const VertexCoordinate& edgeShape = edgeShapes_[offsetIndex_];
 
     size_type index = pivotCoordinate[DIMENSION - 1];
     for (size_type i = DIMENSION - 1; i > 0; --i) {
@@ -427,6 +436,82 @@ HyperGridGraph<D, VISITOR>::edge(
         pivotCoordinate[i] = edgeIndex;
     }
 }
+/*
+/// \internal
+/// \brief Retrieve the direction and isSmaller of the <b>j</b>-th edge of
+/// a vertex
+/// \param vertexCoordinate the integer index of the vertex from which the
+/// edges are originating
+/// \param j the index within the set of adacent edges of the specified vertex
+/// \param[out] direction the direction of the specified edge
+/// \param[out] isSmaller the isSmaller of the specified edge
+/// \retval found If the edge is found, a value of \c true is returned.
+/// \remark This function attempts a fast imlementation that tries not
+/// to waste any comparison operations and is meant for use as a building
+/// block of the class.
+/// \warning For the sake of performance this function does not validate
+/// its inputs.
+/// \sa directionOfEdgeFromVertex, edgeFromVertex
+template<unsigned char D, class VISITOR>
+inline typename HyperGridGraph<D, VISITOR>::size_type
+HyperGridGraph<D, VISITOR>::vertexFromVertex(
+    const VertexCoordinate& vertexCoordinate,
+    const size_type j,
+    OffsetVector offsets;
+    size_type& direction,
+    bool& isSmaller
+) const {
+    assert(vertex(vertexCoordinate) < numberOfVertices());
+    VertexCoordinate modifieableVertexCoordinate = vertexCoordinate;
+    size_type cur_j = 0;
+    for (size_type i = 0; i<offsets.size; i++)
+    {
+        for (size_type j = 0; j<DIMENSION ; j++)
+        {
+            if( //check
+
+
+
+
+
+
+*/
+
+
+/// Initialize an edge coordinate.
+/// \param pivotCoordinate coordinate of the reference vertex.
+/// \param offsetIndex_ the index of the offset along which the edge is drawn.
+/// \param isSmaller relative position of specified endpoint.\n
+/// A value of \c true results in an object corresponding to the edge
+/// of which the smallest endpoint has a HyperGridGraph::VertexCoordinate
+/// equal to \b pivotCoordinate.\n
+/// Similarly, a value of \c false results in an object corresponding
+/// to the edge of which the largest endpoint has a
+/// GridGraph::VertexCoordinate equal to \b pivotCoordinate.
+template<unsigned char D, class VISITOR>
+inline HyperGridGraph<D, VISITOR>::EdgeCoordinate::EdgeCoordinate(
+    const VertexCoordinate& pivotCoordinate,
+    const size_type offsetIndex_,
+    const bool isSmaller
+)
+    : pivotCoordinate_(pivotCoordinate),
+    offsetIndex_(offsetIndex_) {
+    if (isSmaller) {
+        assert(pivotCoordinate_[offsetIndex_] > 0);
+        --pivotCoordinate_[offsetIndex_];
+    }
+}
+
+/// Default non-initializing constructor
+/// \warning this constructor will \b NOT set the pivotCoordinate_ membr
+/// variable to zero.
+template<unsigned char D, class VISITOR>
+inline HyperGridGraph<D, VISITOR>::EdgeCoordinate::EdgeCoordinate() {
+}
+
+
+
+
 
 //Adjacency Iterator implementation
 
@@ -611,8 +696,42 @@ HyperGridGraph<D, VISITOR>::AdjacencyIterator::operator>=(
         && vertex_ == other.vertex_
         && graph_ == other.graph_;
 }
+/*
+// Since the HyperGridGraph has no backing storage for each of the Adjacency
+// objects handled in the class, the AdjacencyIterator is limited to only
+// one adjacency object per iterator instance.
+// This should be sufficient for most normal usage scenarios, and is supported
+// by the very lightweight copying of the AdjacencyType object itself.
+// Note, however, that if you store a reference to the pointed object,
+// then advance the iterator and subsequently dereference it again,
+// the new reference will refer to the very same same adjacency object,
+// unique for the AdjacencyIterator instance.
+// This operation will therefore silently update all previous references to
+// the adjacency object of the iterator.
+template<unsigned char D, class VISITOR>
+inline typename HyperGridGraph<D, VISITOR>::AdjacencyIterator::reference
+HyperGridGraph<D, VISITOR>::AdjacencyIterator::operator*() {
+    adjacency_ = graph_->adjacencyFromVertex(vertex_, adjacencyIndex_);
+    return adjacency_;
+}
 
+template<unsigned char D, class VISITOR>
+inline typename HyperGridGraph<D, VISITOR>::AdjacencyIterator::pointer
+HyperGridGraph<D, VISITOR>::AdjacencyIterator::operator->() {
+    adjacency_ = graph_->adjacencyFromVertex(vertex_, adjacencyIndex_);
+    return &adjacency_;
+}
 
+template<unsigned char D, class VISITOR>
+inline typename HyperGridGraph<D, VISITOR>::AdjacencyIterator::reference
+HyperGridGraph<D, VISITOR>::AdjacencyIterator::operator[](
+    const difference_type j
+    ) {
+    adjacency_ = graph_->adjacencyFromVertex(vertex_, adjacencyIndex_ + j);
+    return adjacency_;
+}
+
+*/
 
 } // namespace graph
 } // namespace andres

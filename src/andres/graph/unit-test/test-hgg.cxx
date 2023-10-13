@@ -10,6 +10,10 @@
 #include "andres/graph/graph.hxx"
 #include "andres/graph/hyper-grid-graph.hxx"
 
+inline void test(const bool& pred) {
+    if (!pred) throw std::runtime_error("Test failed.");
+}
+
 
 // Define the OffsetVector type alias with a template parameter
 template <unsigned char D>
@@ -67,22 +71,18 @@ void test_empty_constructor() {
     std::cout << "Empty constructor test passed!" << std::endl;
 }
 
-void testMalay()
+void testEdge()
 
 {
-
+    andres::graph::HyperGridGraph<2>::OffsetVector
+        offsetVector{{ 1, 0}, { 0,1 }};
     andres::graph::HyperGridGraph<2>
-        graph({ 2, 4 });
-
+        graph({ 2, 4 },offsetVector);
     andres::graph::HyperGridGraph<2>::EdgeCoordinate
         edge_coordinate;
-    andres::graph::HyperGridGraph<2>::OffsetVector
-        vector{{ 1, 0}, { 0,1 }};
-
-    for (size_t idx = 0;
-        idx < graph.numberOfEdges();
-        ++idx)
-
+    
+    std::cout << "Edge Coordinate test \n\n";
+    for (size_t idx = 0; idx < graph.numberOfEdges(); ++idx)
     {
 
         graph.edge(idx, edge_coordinate);
@@ -94,9 +94,42 @@ void testMalay()
             ", " <<
 
             edge_coordinate.pivotCoordinate_[1] <<
-            "), dimension = " <<
+            "), offset = " <<
 
             edge_coordinate.offsetIndex_ << "\n";
+
+    }
+
+}
+
+void testVertex() //list of all vertex indices and their corresponding coordinates
+
+{
+    andres::graph::HyperGridGraph<2>::OffsetVector
+        offsetVector{{ 1, 0}, { 0,1 }};
+    andres::graph::HyperGridGraph<2>
+        graph({ 2, 4 },offsetVector);
+  
+    
+    andres::graph::HyperGridGraph<2>::VertexCoordinate 
+        vertexC;
+
+
+    std::cout << "Vertex Coordinate test \n\n";
+
+    
+    for (size_t idx = 0; idx < graph.numberOfVertices(); ++idx)
+    {
+
+        graph.vertex(idx, vertexC);
+
+        std::cout << "idx = " <<
+            idx << ", Vertex Coordinate = (" <<
+
+            vertexC[0] <<
+            ", " <<
+
+            vertexC[1] <<")\n";
 
     }
 
@@ -105,16 +138,18 @@ void testMalay()
 int main()
 {
    
-    const unsigned char D = 2; // Specify the dimensionality of the grid graph
+    //const unsigned char D = 2; // Specify the dimensionality of the grid graph
 
     // Input the offset values based on the dimension D
-    OffsetVector<D> offset = inputOffset<D>();
+    //OffsetVector<D> offset = inputOffset<D>();
 
     // Print the stored offset values
-    printOffset(offset);
+    //printOffset(offset);
 
     // Perform other tests
-    test_empty_constructor<D>();
+    testEdge();
+    testVertex();
+    //test_empty_constructor<D>();
     //test_empty_offsets();
     //test_vertex_of_edge();
     //test_find_edge();
