@@ -6,9 +6,12 @@
 #include <vector>
 #include <iterator>
 #include <type_traits>
+#include <chrono>
 
 #include "andres/graph/graph.hxx"
+#include "andres/graph/grid-graph.hxx"
 #include "andres/graph/hyper-grid-graph.hxx"
+#include "andres/graph/shortest-paths.hxx"
 
 inline void test(const bool& pred) {
     if (!pred) throw std::runtime_error("Test failed.");
@@ -71,6 +74,27 @@ void test_empty_constructor() {
     std::cout << "Empty constructor test passed!" << std::endl;
 }
 
+
+void testnumberOfVertices()
+{
+    
+    andres::graph::HyperGridGraph<4>::OffsetVector
+        offsetVector{{ 5, 1,2,0}, { 2,2,1,4 }};
+    andres::graph::HyperGridGraph<4>
+        g({ 4,6,2,3 }, offsetVector);
+    andres::graph::HyperGridGraph<4>::EdgeCoordinate
+        edge_coordinate;
+
+    test(g.numberOfVertices() == 4 * 6 * 2 * 3);
+    
+
+
+    if (g.numberOfVertices() == 4 * 6 * 2 * 3)
+    {
+    std::cout << g.numberOfVertices() << "\n"<<4 * 6 * 2 * 3<< "\n";
+    }
+    
+}
 void testEdge()
 
 {
@@ -109,8 +133,6 @@ void testVertex() //list of all vertex indices and their corresponding coordinat
         offsetVector{{ 1, 0}, { 0,1 }};
     andres::graph::HyperGridGraph<2>
         graph({ 2, 4 },offsetVector);
-  
-    
     andres::graph::HyperGridGraph<2>::VertexCoordinate 
         vertexC;
 
@@ -135,6 +157,76 @@ void testVertex() //list of all vertex indices and their corresponding coordinat
 
 }
 
+void testConstructionTime()
+{/*
+    size_t duration1[99]; // Array to store HyperGridGraph execution times
+    size_t duration2[99]; // Array to store GridGraph execution times
+
+    for (size_t i = 2; i <= 100; ++i) {
+        auto start = std::chrono::high_resolution_clock::now();
+        const size_t Dim = i;
+        andres::graph::HyperGridGraph<Dim>::OffsetVector offsetVector{{ 1, 0}, { 0,1 }};
+        andres::graph::HyperGridGraph<Dim> graph({ i,i,2,2 }, offsetVector);
+        andres::graph::HyperGridGraph<4>::EdgeCoordinate 
+            edge_coordinate;
+        auto end = std::chrono::high_resolution_clock::now();
+        duration1[i - 2] = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+
+        start = std::chrono::high_resolution_clock::now();
+        andres::graph::GridGraph<4> 
+            g({ i,i,2,2 });
+        andres::graph::GridGraph<4>::EdgeCoordinate edge_coordinate1;
+        end = std::chrono::high_resolution_clock::now();
+        duration2[i - 2] = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+    }
+
+    // Now you have arrays duration1 and duration2 with execution times.
+    // You can analyze or display the data as needed.
+    for (int i = 0; i < 99; ++i) {
+        std::cout << "Dimension " << i + 2 << ": HGG - " << duration1[i] << " microseconds, GG - " << duration2[i] << " microseconds" << std::endl;
+    }
+}
+*/
+
+    auto start = std::chrono::high_resolution_clock::now();
+    andres::graph::HyperGridGraph<4>::OffsetVector
+        offsetVector{{ 1, 0}, { 0,1 }};
+    andres::graph::HyperGridGraph<4>
+        graph({ 2, 4 ,3,4}, offsetVector);
+    andres::graph::HyperGridGraph<4>::EdgeCoordinate
+        edge_coordinate;
+    auto end = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> duration = end - start;
+    std::cout << "Execution time of HGG: " << duration.count() << " seconds." << std::endl;
+
+    start = std::chrono::high_resolution_clock::now();
+    andres::graph::GridGraph<4>
+        g({ 2, 4 ,3,4 });
+    andres::graph::GridGraph<4>::EdgeCoordinate
+        edge_coordinate1;
+    end = std::chrono::high_resolution_clock::now();
+    duration = end - start;
+    std::cout << "Execution time of GG: " << duration.count() << " seconds." << std::endl;
+
+
+}
+
+void testShortestPath()
+{
+    andres::graph::HyperGridGraph<2>::OffsetVector
+        offsetVector{{ 1, 0}, { 0,1 }};
+    andres::graph::HyperGridGraph<2>
+        g({ 2, 3 }, offsetVector);
+    andres::graph::HyperGridGraph<2>::EdgeCoordinate
+        edge_coordinate;
+
+    std::deque<std::size_t> path;
+
+    bool found = andres::graph::spsp(g, 0, 3, path);
+    //test(found == true);
+    //test(path.size() == 3);
+    
+}
 int main()
 {
    
@@ -147,8 +239,12 @@ int main()
     //printOffset(offset);
 
     // Perform other tests
+    testnumberOfVertices();
     testEdge();
     testVertex();
+    testConstructionTime();
+    testShortestPath();
+
     //test_empty_constructor<D>();
     //test_empty_offsets();
     //test_vertex_of_edge();
