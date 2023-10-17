@@ -90,8 +90,6 @@ public:
         bool operator<=(const AdjacencyIterator&) const;
         bool operator>(const AdjacencyIterator&) const;
         bool operator>=(const AdjacencyIterator&) const;
-
-        void setOffsets(const OffsetVector&);
         
         // access
         reference operator*();
@@ -125,9 +123,14 @@ public:
     size_type numberOfVertices() const;
     size_type numberOfEdges() const;
     size_type numberOfEdgesFromVertex(const size_type) const;
-    AdjacencyType adjacencyFromVertex(const size_type, const OffsetVector, const size_type) const;
-    AdjacencyType adjacencyToVertex(const size_type, const OffsetVector, const size_type) const;
-   
+    size_type numberOfEdgesToVertex(const size_type) const;
+    size_type vertexFromVertex(const size_type, const size_type) const;
+    size_type vertexToVertex(const size_type, const size_type) const;
+    AdjacencyType adjacencyFromVertex(const size_type, const size_type) const;
+    AdjacencyType adjacencyToVertex(const size_type, const size_type) const;
+    std::pair<bool, size_type> findEdge(const size_type, const size_type) const;
+    size_type insertEdge(const size_type, const size_type) const;
+
     size_type shape(const size_type) const;
 
     size_type vertex(const VertexCoordinate&) const;
@@ -135,22 +138,16 @@ public:
     size_type edge(const EdgeCoordinate&) const;
     void edge(size_type, EdgeCoordinate&) const;
     
-    
-    
-protected:
-    OffsetVector offsets_;
-
-
 
 private:
 
-    size_type vertexFromVertex(const VertexCoordinate&, const OffsetVector, const size_type, size_type&, bool&) const;
-    void adjacencyFromVertex(const VertexCoordinate&, const OffsetVector, const size_type, size_type&, size_type&) const;
+    size_type vertexFromVertex(const VertexCoordinate&,  const size_type, size_type&, bool&) const;
+    void adjacencyFromVertex(const VertexCoordinate&,  const size_type, size_type&, size_type&) const;
     
     
     // Member variables
     VertexCoordinate shape_;
-    
+    OffsetVector offsets_;
     std::array<size_type, DIMENSION> edgeIndexOffsets_;
     std::array<size_type, DIMENSION> vertexIndexOffsets_;
     std::array<VertexCoordinate, DIMENSION> edgeShapes_; //in a HGG the value of 0 in a edgeShapes_ denotes that the edge is not possible for any rows
@@ -272,44 +269,105 @@ HyperGridGraph<D, VISITOR>::numberOfEdgesFromVertex(
     this->vertex(vertex, edgeCoordinate);
     size_type numEdgesFromVertex = 0;
 
-    for (const auto& offset : offsets)
+    for (const auto& offset : offsets_)
     {
         VertexCoordinate neighborCoordinate = edgeCoordinate;
         VertexCoordinate negNeighborCoordinate = edgeCoordinate;
-
+        bool isValidNeighbor1;
+        bool isValidNeighbor2;
 
         // Add the elements of the current offset array to the edge coordinate  
         for (unsigned char i = 0; i < D; ++i)
         {
-            neighborCoordinate[i] += offset[i];
-            negNeighborCoordinate[i] -= offset[i];
-
+            neighborCoordinate[i] += offset[i];     
             // Check if the neighbor coordinate is within the shape of the graph
-            bool isValidNeighbor1 = true;
-            bool isValidNeighbor2 = true;
+            isValidNeighbor1 = true;
+       
 
             if (neighborCoordinate[i] < 0 || neighborCoordinate[i] >= shape_[i]) {
                 isValidNeighbor1 = false;
                 break;
-                if (negNeighborCoordinate[i] < 0 || negNeighborCoordinate[i] >= shape_[i]) {
-                    isValidNeighbor2 = false;
-                    break;
-                }
             }
-
-            if (isValidNeighbor1) {
-                ++numEdgesFromVertex;
-            }
-            if (isValidNeighbor2) {
-                ++numEdgesFromVertex;
-            }
-
+        }
+        if (isValidNeighbor1) {
+            ++numEdgesFromVertex;
         }
 
-        return numEdgesFromVertex;
+        for (unsigned char i = 0; i < D; ++i)
+        {          
+            negNeighborCoordinate[i] -= offset[i];
+
+            // Check if the neighbor coordinate is within the shape of the graph
+            isValidNeighbor2 = true;
+            
+            if (negNeighborCoordinate[i] < 0 || negNeighborCoordinate[i] >= shape_[i]) {
+                isValidNeighbor2 = false;
+                break;
+            } 
+        }
+        if (isValidNeighbor2) {
+            ++numEdgesFromVertex;
+        }        
     }
+    return numEdgesFromVertex;
 }
 
+/// Get the number of  edges that are incident to a given vertex.
+///
+/// \param vertex Integer index of a vertex.
+///
+/// \sa edgeToVertex()
+///
+template<unsigned char D, class VISITOR>
+inline typename HyperGridGraph<D, VISITOR>::size_type
+HyperGridGraph<D, VISITOR>::numberOfEdgesToVertex(
+    const size_type vertex
+) const {
+    return numberOfEdgesFromVertex(vertex);
+}
+
+/// Get the integer index of a vertex from which a given vertex is reachable
+/// via a single edge.
+///
+/// \param vertex Integer index of a vertex.
+/// \param j Number of the vertex; between 0 and
+/// numberOfEdgesFromVertex(vertex) - 1.
+///
+/// \sa numberOfEdgesFromVertex()
+///
+template<unsigned char D, class VISITOR>
+inline typename HyperGridGraph<D, VISITOR>::size_type
+HyperGridGraph<D, VISITOR>::vertexFromVertex(
+    const size_type vertex,
+    const size_type j
+) const {
+    assert(j < numberOfEdgesToVertex(vertex));
+    VertexCoordinate vertexCoordinate;
+    this->vertex(vertex, vertexCoordinate);
+    size_type direction;
+    bool isSmaller;
+    return vertexFromVertex(vertexCoordinate, j, direction, isSmaller);
+}
+
+
+/// Get the integer index of a vertex to which a given vertex has a single
+/// edge.
+///
+/// \param vertex Integer index of a vertex.
+/// \param j Number of the vertex; between 0 and
+/// numberOfEdgesFromVertex(vertex) - 1.
+///
+/// \sa numberOfEdgesFromVertex()
+///
+template<unsigned char D, class VISITOR>
+inline typename HyperGridGraph<D, VISITOR>::size_type
+HyperGridGraph<D, VISITOR>::vertexToVertex(
+    const size_type vertex,
+    const size_type j
+) const {
+    assert(j < numberOfEdgesToVertex(vertex));
+    return vertexFromVertex(vertex, j);
+}
 
 /// Get the j-th adjacency from a vertex.
 ///
@@ -319,19 +377,17 @@ template<unsigned char D, class VISITOR>
 inline typename HyperGridGraph<D, VISITOR>::AdjacencyType
 HyperGridGraph<D, VISITOR>::adjacencyFromVertex(
     const size_type vertex,
-    const OffsetVector offsets,
     const size_type j
 ) const {
     assert(j < numberOfEdgesToVertex(vertex));
     size_type direction;
     size_type adjacentEdgeIndex;
     size_type adjacentVertexIndex;
-
     {
         VertexCoordinate vertexCoordinate;
         this->vertex(vertex, vertexCoordinate);
 
-        adjacencyFromVertex(vertexCoordinate, offsets, j, adjacentVertexIndex, adjacentEdgeIndex);
+        adjacencyFromVertex(vertexCoordinate, j, adjacentVertexIndex, adjacentEdgeIndex);
     }
     return AdjacencyType(adjacentVertexIndex, adjacentEdgeIndex);
 }
@@ -346,12 +402,84 @@ template<unsigned char D, class VISITOR>
 inline typename HyperGridGraph<D, VISITOR>::AdjacencyType
 HyperGridGraph<D, VISITOR>::adjacencyToVertex(
     const size_type vertex,
-    const OffsetVector offsets,
     const size_type j
 ) const {
-    return adjacencyFromVertex(vertex,offsets, j);
+    return adjacencyFromVertex(vertex, j);
 }
 
+
+/// Search for an edge (in constant time).
+///
+/// \param vertex0 first vertex of the edge.
+/// \param vertex1 second vertex of the edge.
+/// \retval pair an \c std::pair. If an edge from \b vertex0 to \b vertex1
+/// exists, \c pair.first is \c true
+/// and \c pair.second is the index of such an edge. If no edge from \b
+/// vertex0 to \b vertex1 exists, \c pair.first is \c false
+/// and \c pair.second is undefined.
+template<unsigned char D, class VISITOR>
+inline std::pair<bool, typename HyperGridGraph<D, VISITOR>::size_type>
+HyperGridGraph<D, VISITOR>::findEdge(
+    const size_type vertex0,
+    const size_type vertex1
+) const {
+    assert(vertex0 < numberOfVertices());
+    assert(vertex1 < numberOfVertices());
+    VertexCoordinate vertexCoordinate0;
+    vertex(vertex0, vertexCoordinate0);
+    VertexCoordinate vertexCoordinate1;
+    vertex(vertex1, vertexCoordinate1);
+   
+    for (size_type i = 0; i< offsets_.size(); i++) {
+        bool flag1 = true;
+        bool flag2 = true;
+        for (size_t j = 0; j < DIMENSION; j++) {
+            if (vertexCoordinate0[j] + offsets_[i][j] != vertexCoordinate1[j]) {
+                flag1 = false;                
+            }
+            if (vertexCoordinate0[j] - offsets_[i][j] != vertexCoordinate1[j]) {
+                flag2 = false;              
+            }
+        }
+        if (flag1) {
+            
+            const EdgeCoordinate edgeCoordinate(vertexCoordinate0, i, false);
+            const size_type edgeIndex = edge(edgeCoordinate);
+            return  std::make_pair(true, edgeIndex);
+        }
+        if (flag2) {
+       
+            const EdgeCoordinate edgeCoordinate(vertexCoordinate1, i, false);
+            const size_type edgeIndex = edge(edgeCoordinate);
+            return  std::make_pair(true, edgeIndex);
+        }        
+    }
+    return std::make_pair(false, 0);
+}
+
+/// Returns the edge between the specified vertices.
+///
+/// \param vertexIndex0 Integer index of the first vertex in the edge.
+/// \param vertexIndex1 Integer index of the second vertex in the edge.
+/// \return Integer index of the newly inserted edge.
+/// \throw runtime_error If the edge does not exist.
+template<unsigned char D, class VISITOR>
+inline typename HyperGridGraph<D, VISITOR>::size_type
+HyperGridGraph<D, VISITOR>::insertEdge(
+    const size_type vertexIndex0,
+    const size_type vertexIndex1
+) const {
+    assert(vertexIndex0 < numberOfVertices());
+    assert(vertexIndex1 < numberOfVertices());
+
+    std::pair<bool, std::size_t> p = findEdge(vertexIndex0, vertexIndex1);
+    if (p.first == true) {
+        return p.second;
+    }
+    else {
+        throw std::runtime_error("Edge not found.");
+    }
+}
 /// Give Vertex index and retrieve the vertex coordinate. //completed
 /// \param[in] vertexIndex the integer index of the requested vertex
 /// \param[out] vertexCoordinate The coordinates of the vertex.
@@ -497,7 +625,7 @@ inline typename HyperGridGraph<D, VISITOR>::size_type
 HyperGridGraph<D, VISITOR>::edge(
     const EdgeCoordinate& edgeCoordinate
 ) const {
-    assert(edgeCoordinate.size() < DIMENSION);
+    assert(edgeCoordinate.offsetIndex_ < offsets_.size());
 
     const size_type& offsetIndex_ = edgeCoordinate.offsetIndex_;
     const VertexCoordinate& pivotCoordinate = edgeCoordinate.pivotCoordinate_;
@@ -507,8 +635,8 @@ HyperGridGraph<D, VISITOR>::edge(
     for (size_type i = DIMENSION - 1; i > 0; --i) {
         index = index * edgeShape[i - 1] + pivotCoordinate[i - 1];
     }
-    if (dimension > 0) {
-        const size_type& indexOffset = edgeIndexOffsets_[dimension - 1];
+    if (offsetIndex_ > 0) {
+        const size_type& indexOffset = edgeIndexOffsets_[offsetIndex_ - 1];
         index += indexOffset;
     }
     return index;
@@ -518,7 +646,7 @@ HyperGridGraph<D, VISITOR>::edge(
 
 /// Retrieve the specified edge of the graph. Given edge index, send back edgeCoordinate(Pivot coordinate and offset index).
 /// \param[in] edgeIndex the integer index of the requested edge.
-/// \param[out] edgeCoordinate a GridGraph::EdgeCoordinate instance. \c
+/// \param[out] edgeCoordinate a HyperGridGraph::EdgeCoordinate instance. \c
 /// edgeCoordinate.pivot is the integer index
 ///  of the minimum of the two edge endpoints; \p edgeCoordinate.direction
 ///  is the dimension along which
@@ -574,7 +702,6 @@ template<unsigned char D, class VISITOR>
 inline typename HyperGridGraph<D, VISITOR>::size_type
 HyperGridGraph<D, VISITOR>::vertexFromVertex(
     const VertexCoordinate& vertexCoordinate,
-    const OffsetVector offsets,
     const size_type j,
     size_type& direction,
     bool& isSmaller
@@ -582,59 +709,65 @@ HyperGridGraph<D, VISITOR>::vertexFromVertex(
     assert(vertex(vertexCoordinate) < numberOfVertices());
     VertexCoordinate modifieableVertexCoordinate = vertexCoordinate;
     size_type cur_j = 0;
-    for (size_type i = 0; i < offsets.size; i++) //incoming edges
+   
+    for (size_type i = 0; i < offsets_.size(); i++) //incoming edges
     {
+        bool flag = true;
         for (size_type k = DIMENSION; k > 0; k--)
         {
-            if (vertexCoordinate[k - 1] - offsets[i][k - 1] > -1) //check if edge exists
+            int z = (int)vertexCoordinate[k - 1] - (int)offsets_[i][k - 1];
+            if (z < 0) //check if edge doesn't exist in this dimension
             {
-                if (cur_j == j)
-                {
-                    bool flag = true;
-                    modifieableVertexCoordinate[k-1] -=  offsets[i][k-1];
-                    
-                }
-
+                flag = false; 
+                break;
             }
-
         }
-        if (flag == true)
+        if (flag == true && cur_j == j)
         {
+            for (size_type k = 0; k < DIMENSION; k++)
+            {
+                modifieableVertexCoordinate[k] -= offsets_[i][k];  //modify the vertex
+            }
             direction = i; //along i-th offset
             isSmaller = false;
             const size_type vertexIndex = vertex(modifieableVertexCoordinate);
             return vertexIndex;
         }
-        ++cur_j;
+        if (flag)
+        {
+            ++cur_j;
+        }        
     }
 
-    for (size_type i = 0; i < offsets.size; i++) // outgoing edges
+    for (size_type i = 0; i < offsets_.size(); i++) // outgoing edges
     {
+        bool flag = true;
         for (size_type k = 0; k < DIMENSION; k++)
         {
-            if (vertexCoordinate[k] + offsets[i][k] < shape_[i])
+            int z = (int)vertexCoordinate[k] + (int)offsets_[i][k];
+            if (z > shape_[i])
             {
-                if (cur_j == j) 
-                {
-                    bool flag= true                    
-                    modifieableVertexCoordinate[i]+= offsets[i][k];
-                    
-                }
+                flag = false;
+                break;
             }
         }
-        if (flag == true)
+        if (flag == true  && cur_j == j)
         {
+            for (size_type k = 0; k < DIMENSION; k++)
+            {
+                modifieableVertexCoordinate[k] += offsets_[i][k]; //modify the vertex
+            }
             direction = i; //along i-th offset
             isSmaller = true;
             const size_type vertexIndex = vertex(modifieableVertexCoordinate);
             return vertexIndex;
         }
-        ++cur_j;
-
-        
+        if (flag)
+        {
+            ++cur_j;
+        }               
     }
     throw std::out_of_range("vertex neighbor index out of range.");
-
 }
 
 
@@ -642,7 +775,6 @@ template<unsigned char D, class VISITOR>
 inline void
 HyperGridGraph<D, VISITOR>::adjacencyFromVertex(
     const VertexCoordinate& vertexCoordinate,
-    const OffsetVector offsets,
     const size_type j,
     size_type& adjacentVertexIndex,
     size_type& adjacentEdgeIndex
@@ -650,15 +782,16 @@ HyperGridGraph<D, VISITOR>::adjacencyFromVertex(
     assert(vertex(vertexCoordinate) < numberOfVertices());
     size_type direction;
     bool isSmaller;
-    adjacentVertexIndex = vertexFromVertex(vertexCoordinate, offsets, j, direction, isSmaller);
-    if (isSmaller)
+    adjacentVertexIndex = vertexFromVertex(vertexCoordinate, j, direction, isSmaller);
+    if (isSmaller) //outgoing edge
     {
-        VertexCoordinate pivotVertexCoordinate = vertex(adjacentVertexIndex);
-        //--pivotVertexCoordinate[direction];
-        adjacentEdgeIndex = edge(EdgeCoordinate(pivotVertexCoordinate, direction));
-    }
-    else {
+        
         adjacentEdgeIndex = edge(EdgeCoordinate(vertexCoordinate, direction));
+    }
+    else { //incoming edge
+        VertexCoordinate pivotVertexCoordinate;
+        this->vertex(adjacentVertexIndex, pivotVertexCoordinate);
+        adjacentEdgeIndex = edge(EdgeCoordinate(pivotVertexCoordinate, direction));
     }
 }
 
@@ -884,11 +1017,6 @@ HyperGridGraph<D, VISITOR>::AdjacencyIterator::operator>=(
 }
 
 
-template<unsigned char D, class VISITOR>
-inline void HyperGridGraph<D, VISITOR>::AdjacencyIterator::setOffsets(const OffsetVector& offsets) {
-    offsets_ = offsets;
-}
-
 // Since the HyperGridGraph has no backing storage for each of the Adjacency
 // objects handled in the class, the AdjacencyIterator is limited to only
 // one adjacency object per iterator instance.
@@ -903,14 +1031,14 @@ inline void HyperGridGraph<D, VISITOR>::AdjacencyIterator::setOffsets(const Offs
 template<unsigned char D, class VISITOR>
 inline typename HyperGridGraph<D, VISITOR>::AdjacencyIterator::reference
 HyperGridGraph<D, VISITOR>::AdjacencyIterator::operator*() {
-    adjacency_ = graph_->adjacencyFromVertex(vertex_, offsets_, adjacencyIndex_);
+    adjacency_ = graph_->adjacencyFromVertex(vertex_, adjacencyIndex_);
     return adjacency_;
 }
 
 template<unsigned char D, class VISITOR>
 inline typename HyperGridGraph<D, VISITOR>::AdjacencyIterator::pointer
 HyperGridGraph<D, VISITOR>::AdjacencyIterator::operator->() {
-    adjacency_ = graph_->adjacencyFromVertex(vertex_, offsets_, adjacencyIndex_);
+    adjacency_ = graph_->adjacencyFromVertex(vertex_, adjacencyIndex_);
     return &adjacency_;
 }
 
@@ -918,7 +1046,7 @@ template<unsigned char D, class VISITOR>
 inline typename HyperGridGraph<D, VISITOR>::AdjacencyIterator::reference
 HyperGridGraph<D, VISITOR>::AdjacencyIterator::operator[](
     const difference_type j) {
-    adjacency_ = graph_->adjacencyFromVertex(vertex_, offsets_, adjacencyIndex_ + j);
+    adjacency_ = graph_->adjacencyFromVertex(vertex_, adjacencyIndex_ + j);
     return adjacency_;
 }
 
