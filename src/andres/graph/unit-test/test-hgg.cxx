@@ -180,11 +180,11 @@ void testNumberOfEdgesToVertex()
 void testvertexFromVertex() {
 
     andres::graph::HyperGridGraph<2>::OffsetVector
-        offsetVector{{ 1, 2}, { 0,1 }};
+        offsetVector{{ 1, 2}, { 2,10 }};
     andres::graph::HyperGridGraph<2>
-        g({ 2, 3 }, offsetVector);
+        g({ 200, 30 }, offsetVector);
     
-    auto v = g.vertexFromVertex(0, 0);
+    auto v = g.vertexFromVertex(20, 1);
     std::cout << "Vertex index at edge XXX from vertex index ZZZ: "  << v << std::endl;
 }
 void testvertexToVertex()
@@ -226,6 +226,24 @@ void testInsertedge()
 
     auto d = g.insertEdge(3, 7);
     std::cout << "Edge index btwn is " << d << std::endl;
+}
+
+void testAdjacencyIterator()
+{
+    andres::graph::HyperGridGraph<2>::OffsetVector
+        offsetVector{{ 1, 1}, { 0,1 }};
+    andres::graph::HyperGridGraph<2>
+        g({ 3, 3 }, offsetVector);
+    andres::graph::HyperGridGraph<2>::AdjacencyIterator it(g, 4);
+    /*
+    typename andres::graph::HyperGridGraph<2>::AdjacencyIterator it;
+   typename andres::graph::HyperGridGraph<2>::AdjacencyIterator end;
+    
+    // Iterate through the adjacent vertices
+    for (; it != it.end(); ++it) {
+        size_type adjacentVertex = *it;
+        std::cout << "Vertex " << vertex << " has an adjacent neighbor: " << adjacentVertex << std::endl;
+    */
 }
 
 void compareConstructor()
@@ -292,15 +310,15 @@ void compareConstructionTime() {
 void testShortestPath()
 {
     andres::graph::HyperGridGraph<2>::OffsetVector
-        offsetVector{{ 1, 2}, { 0,2 }};
+        offsetVector{{ 2, 2}, { 0,2 }};
     andres::graph::HyperGridGraph<2>
-        g({ 3, 3 }, offsetVector);
+        g({ 2, 3 }, offsetVector);
     andres::graph::HyperGridGraph<2>::EdgeCoordinate
         edge_coordinate;
 
     std::deque<std::size_t> path;
 
-    bool found = andres::graph::spsp(g, 0, 8, path);
+    bool found = andres::graph::spsp(g, 0, 100, path);
     std::cout << found << std::endl;
     for (const size_t& element : path) {
         std::cout << element << " ";
@@ -308,6 +326,7 @@ void testShortestPath()
     std::cout << std::endl;
     //test(found == true);
     //test(path.size() == 3);
+    /*
     std::cout << "Edge Coordinate test \n\n";
     for (size_t idx = 0; idx < g.numberOfEdges(); ++idx)
     {
@@ -325,10 +344,94 @@ void testShortestPath()
 
             edge_coordinate.offsetIndex_ << "\n";
 
-    }
+    }  */
 }
 
+void compareHGGvsG() // this code uses the shortest path algorithm to compare run time of HGG and G
+{
+    andres::graph::HyperGridGraph<2>::OffsetVector
+        offsetVector{{ 1, 1}, { 0,1 }};
+    andres::graph::HyperGridGraph<2>
+        hgg({ 100, 50 }, offsetVector);
+    andres::graph::HyperGridGraph<2>::EdgeCoordinate
+        edge_coordinate;
+    andres::graph::HyperGridGraph<2>::VertexCoordinate vCoord;
+    size_t n = 5000;
+    andres::graph::Graph<> g(n);
 
+ 
+    for (size_t i = 0; i < hgg.numberOfEdges(); i++) {
+        hgg.edge(i, edge_coordinate);
+        vCoord[0] = edge_coordinate.pivotCoordinate_[0] + offsetVector[edge_coordinate.offsetIndex_][0];
+        vCoord[1] = edge_coordinate.pivotCoordinate_[1] + offsetVector[edge_coordinate.offsetIndex_][1];
+       // std::cout << edge_coordinate.pivotCoordinate_[0] << ", " << edge_coordinate.pivotCoordinate_[1]
+       //     << " offset index= " << edge_coordinate.offsetIndex_ << " destination coord: "<<vCoord[0]<<", "<<vCoord[1]<<"\n";
+        size_t vIndex1 = hgg.vertex(edge_coordinate.pivotCoordinate_);
+        size_t vIndex2 = hgg.vertex(vCoord);
+        g.insertEdge(vIndex1, vIndex2);
+
+               
+    }
+  
+    std::deque<std::size_t> path;
+    auto start = std::chrono::high_resolution_clock::now();
+    bool found = andres::graph::spsp(g, 0, 2000, path);
+
+    auto end = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> duration = end - start;
+    std::cout << "Execution time of graph: " << duration.count() << " seconds." << std::endl;
+
+    std::deque<std::size_t> path1;
+    start = std::chrono::high_resolution_clock::now();
+    found = andres::graph::spsp(hgg, 0, 2000, path1);
+    end = std::chrono::high_resolution_clock::now();
+    duration = end - start;
+    std::cout << "Execution time of HGG: " << duration.count() << " seconds." << std::endl;
+}
+
+void compareHGGvsGWithWeights() {
+    andres::graph::HyperGridGraph<2>::OffsetVector
+        offsetVector{{ 1, 1}, { 0,1 }};
+    andres::graph::HyperGridGraph<2>
+        hgg({ 100, 50 }, offsetVector);
+    andres::graph::HyperGridGraph<2>::EdgeCoordinate
+        edge_coordinate;
+    andres::graph::HyperGridGraph<2>::VertexCoordinate vCoord;
+    size_t n = 5000;
+    andres::graph::Graph<> g(n);
+
+    std::vector<float> edgeWeights(hgg.numberOfEdges());
+
+    for (size_t i = 0; i < hgg.numberOfEdges(); i++) {
+        hgg.edge(i, edge_coordinate);
+        vCoord[0] = edge_coordinate.pivotCoordinate_[0] + offsetVector[edge_coordinate.offsetIndex_][0];
+        vCoord[1] = edge_coordinate.pivotCoordinate_[1] + offsetVector[edge_coordinate.offsetIndex_][1];
+        // std::cout << edge_coordinate.pivotCoordinate_[0] << ", " << edge_coordinate.pivotCoordinate_[1]
+        //     << " offset index= " << edge_coordinate.offsetIndex_ << " destination coord: "<<vCoord[0]<<", "<<vCoord[1]<<"\n";
+        size_t vIndex1 = hgg.vertex(edge_coordinate.pivotCoordinate_);
+        size_t vIndex2 = hgg.vertex(vCoord);
+        g.insertEdge(vIndex1, vIndex2);
+
+        edgeWeights[i] = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
+
+
+    }
+    float distance = 0;
+    std::deque<std::size_t> path;
+    auto start = std::chrono::high_resolution_clock::now();
+    andres::graph::spsp(g, 0, 3000, edgeWeights.begin(), path, distance);
+    auto end = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> duration = end - start;
+    std::cout << "Execution time of graph: " << duration.count() << " seconds. \nDistance: " << distance << std::endl;
+
+    distance = 0;
+    std::deque<std::size_t> path1;
+    start = std::chrono::high_resolution_clock::now();
+    andres::graph::spsp(hgg, 0, 3000, edgeWeights.begin(), path, distance);
+    end = std::chrono::high_resolution_clock::now();
+    duration = end - start;
+    std::cout << "Execution time of HGG: " << duration.count() << " seconds.\nDistance: " << distance << std::endl;
+}
 
 int main()
 {
@@ -347,25 +450,25 @@ int main()
     //testNumberOfEdgesFromVertex(); // working
     //testNumberOfEdgesToVertex();  //working same as numedgefromvertex
     
-    //testvertexFromVertex(); //working
-    //testvertexToVertex(); //woring
+    //testvertexFromVertex(); //
+    //testvertexToVertex(); //
     //testAdjacencyFromVertex(); //working
     //testFindEdge(); //working
     //testInsertedge();
     // 
     // 
-    //testAdjacencyIterator(); //not implemented
+    //testAdjacencyIterator(); //not working
 
 
     
-    //testShortestPath(); //completed
+    testShortestPath(); //
 
     //COMPARISION TESTS
     
     //compareConstructor();
     //compareConstructionTime<3>(); //completed
     //compareHGGvsG(); 
-     
+    //compareHGGvsGWithWeights();
  
     //test_empty_offsets();
     //test_vertex_of_edge();
