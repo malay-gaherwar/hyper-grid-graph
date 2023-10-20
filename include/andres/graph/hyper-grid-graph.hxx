@@ -745,7 +745,7 @@ HyperGridGraph<D, VISITOR>::vertexFromVertex(
         for (size_type k = 0; k < DIMENSION; k++)
         {
             int z = (int)vertexCoordinate[k] + (int)offsets_[i][k];
-            if (z > shape_[k])
+            if (z >= shape_[k])
             {
                 flag = false;
                 break;
