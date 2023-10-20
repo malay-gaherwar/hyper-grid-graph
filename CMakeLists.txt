@@ -50,6 +50,7 @@ endif()
 ##############################################################################
 # targets: graph
 ##############################################################################
+
 add_executable(test-graph-hyper-grid-graph src/andres/graph/unit-test/test-hgg.cxx)
 target_include_directories(test-graph-hyper-grid-graph PUBLIC include)
 add_test(test-graph-hyper-grid-graph test-graph-hyper-grid-graph)
